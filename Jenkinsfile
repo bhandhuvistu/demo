@@ -32,19 +32,19 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
-            steps {
-                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                    sh """
-                    mvn sonar:sonar \
-                        -Dsonar.projectKey=$SONAR_PROJECT_KEY \
-                        -Dsonar.projectName=$SONAR_PROJECT_NAME \
-                        -Dsonar.host.url=$SONAR_URL \
-                        -Dsonar.login=$SONAR_TOKEN
-                    """
+           steps {
+               withSonarQubeEnv('SonarQube') {   // Name configured in Jenkins
+            withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                sh """
+                mvn sonar:sonar \
+                    -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+                    -Dsonar.projectName=$SONAR_PROJECT_NAME \
+                    -Dsonar.login=$SONAR_TOKEN
+                """
                 }
-            }
+             }
+          }
         }
-
         stage('Quality Gate Check') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
