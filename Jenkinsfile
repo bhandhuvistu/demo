@@ -2,33 +2,54 @@ pipeline {
     agent any
 
     environment {
-        NEXUS_URL = "43.204.37.180:8082"    // Nexus Docker port
+        NEXUS_URL = "43.204.37.180:8082"      // Nexus Docker port
         IMAGE_NAME = "shopping"
         REPO_NAME = "docker-hosted"
+        SONAR_URL = "http://3.108.41.2:9000"
+        SONAR_PROJECT_KEY = "shopping-app"
+        SONAR_PROJECT_NAME = "ShoppingApp"
     }
 
     stages {
 
         stage('Git Checkout') {
             steps {
-                script {
-                    git branch: 'feature/changing-port-in-dockerfile', 
-                        url: 'https://github.com/bhandhuvistu/demo.git'
-                }
+                git branch: 'feature/changing-port-in-dockerfile', 
+                    url: 'https://github.com/bhandhuvistu/demo.git'
             }
         }
 
         stage('Maven Build') {
             steps {
-                script {
-                    sh 'mvn clean install'
-                }
+                sh 'mvn clean install'
             }
         }
 
         stage('Test') {
             steps {
                 sh 'mvn test'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    sh """
+                    mvn sonar:sonar \
+                        -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+                        -Dsonar.projectName=$SONAR_PROJECT_NAME \
+                        -Dsonar.host.url=$SONAR_URL \
+                        -Dsonar.login=$SONAR_TOKEN
+                    """
+                }
+            }
+        }
+
+        stage('Quality Gate Check') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
             }
         }
 
@@ -49,9 +70,8 @@ pipeline {
 
         stage('Login to Nexus') {
             steps {
-                // Use Jenkins credentials instead of hardcoding
                 withCredentials([usernamePassword(
-                    credentialsId: 'nexus-docker',   // This ID must match your Jenkins credential
+                    credentialsId: 'nexus-docker',
                     usernameVariable: 'USERNAME', 
                     passwordVariable: 'PASSWORD'
                 )]) {
