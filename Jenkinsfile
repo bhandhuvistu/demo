@@ -1,77 +1,70 @@
 pipeline {
     agent any
 
+    environment {
+        NEXUS_URL = "43.204.37.180:8082"    // Nexus Docker port
+        IMAGE_NAME = "shopping"
+        REPO_NAME = "docker-hosted"
+    }
+
     stages {
 
-        stage('Load Config') {
+        stage('Git Checkout') {
             steps {
                 script {
-                    def props = readProperties file: 'config.properties'
-                    
-                    props.each { key, value ->
-                        env."${key}" = value   // ✅ sandbox-safe way
-                    }
+                    git branch: 'feature/changing-port-in-dockerfile', 
+                        url: 'https://github.com/bhandhuvistu/demo.git'
                 }
             }
         }
 
-        stage('Build Application') {
+        stage('Maven Build') {
             steps {
-                sh 'mvn clean install'
+                script {
+                    sh 'mvn clean install'
+                }
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Test') {
             steps {
-                script {
-                    def tag = "v.${env.BUILD_NUMBER}"
-                    def imageName = "${env.DOCKER_REPO}:${tag}"
-                    def repoName = "${env.DOCKER_USERNAME}/${env.DOCKER_REPO}:${tag}"
+                sh 'mvn test'
+            }
+        }
 
+        stage('Docker Image Build') {
+            steps {
+                sh "docker image build -t $IMAGE_NAME:v.$BUILD_NUMBER ."
+            }
+        }
+
+        stage('Tag Image for Nexus') {
+            steps {
+                sh """
+                docker tag $IMAGE_NAME:v.$BUILD_NUMBER \
+                $NEXUS_URL/$REPO_NAME/$IMAGE_NAME:v.$BUILD_NUMBER
+                """
+            }
+        }
+
+        stage('Login to Nexus') {
+            steps {
+                // Use Jenkins credentials instead of hardcoding
+                withCredentials([usernamePassword(
+                    credentialsId: 'nexus-docker',   // This ID must match your Jenkins credential
+                    usernameVariable: 'USERNAME', 
+                    passwordVariable: 'PASSWORD'
+                )]) {
                     sh """
-                        docker build -t ${imageName} .
-                        docker tag ${imageName} ${repoName}
+                    echo $PASSWORD | docker login $NEXUS_URL -u $USERNAME --password-stdin
                     """
                 }
             }
         }
 
-        stage('Push Docker Image') {
+        stage('Push Image to Nexus') {
             steps {
-                script {
-                    def tag = "v.${env.BUILD_NUMBER}"
-                    def repoName = "${env.DOCKER_USERNAME}/${env.DOCKER_REPO}:${tag}"
-
-                    withCredentials([string(credentialsId: 'dockerhubpswd', variable: 'dockerpswd')]) {
-                        sh """
-                            echo "${dockerpswd}" | docker login -u "${env.DOCKER_USERNAME}" --password-stdin
-                            docker push ${repoName}
-                        """
-                    }
-                }
-            }
-        }
-
-        stage('Deploy Container') {
-            steps {
-                script {
-                    def tag = "v.${env.BUILD_NUMBER}"
-                    def imageName = "${env.DOCKER_USERNAME}/${env.DOCKER_REPO}:${tag}"
-
-                    sh """
-                        if docker ps -a --format '{{.Names}}' | grep -w ${env.CONTAINER_NAME}; then
-                            docker stop ${env.CONTAINER_NAME}
-                            docker rm ${env.CONTAINER_NAME}
-                        else
-                            echo "Container not running"
-                        fi
-
-                        docker run -d \
-                            -p ${env.HOST_PORT}:${env.CONTAINER_PORT} \
-                            --name ${env.CONTAINER_NAME} \
-                            ${imageName}
-                    """
-                }
+                sh "docker push $NEXUS_URL/$REPO_NAME/$IMAGE_NAME:v.$BUILD_NUMBER"
             }
         }
     }
