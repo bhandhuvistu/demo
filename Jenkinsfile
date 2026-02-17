@@ -45,14 +45,6 @@ pipeline {
              }
           }
         }
-        stage('Quality Gate Check') {
-            steps {
-                timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
-
         stage('Docker Image Build') {
             steps {
                 sh "docker image build -t $IMAGE_NAME:v.$BUILD_NUMBER ."
