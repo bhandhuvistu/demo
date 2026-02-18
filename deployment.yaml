@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shopping-app
+  labels:
+    app: shopping-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: shopping-app
+  template:
+    metadata:
+      labels:
+        app: shopping-app
+    spec:
+      containers:
+      - name: shopping-app
+        # Use a placeholder tag; Jenkins will update this dynamically
+        image: 43.204.37.180:8082/docker-hosted/shopping:latest
+        ports:
+        - containerPort: 8282
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8282
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8282
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
