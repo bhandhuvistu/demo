@@ -14,10 +14,11 @@ spec:
       labels:
         app: shopping-app
     spec:
+      imagePullSecrets:
+      - name: nexus-pull-secret
       containers:
       - name: shopping-app
-        # Use a placeholder tag; Jenkins will update this dynamically
-        image: 43.204.37.180:8082/docker-hosted/shopping:latest
+        image: 43.204.37.180:8082/docker-hosted/shopping:PLACEHOLDER_TAG
         ports:
         - containerPort: 8282
         readinessProbe:
