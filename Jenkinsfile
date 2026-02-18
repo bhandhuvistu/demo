@@ -2,12 +2,12 @@ pipeline {
     agent any
 
     environment {
-        NEXUS_URL = "43.204.37.180:8082"      // Nexus Docker registry
+        NEXUS_URL = "43.204.37.180:8082"
         IMAGE_NAME = "shopping"
         REPO_NAME = "docker-hosted"
         SONAR_PROJECT_KEY = "shopping-app"
         SONAR_PROJECT_NAME = "ShoppingApp"
-        EKS_CLUSTER_NAME = "eks-cluster"      // Your EKS cluster
+        EKS_CLUSTER_NAME = "eks-cluster"
         AWS_REGION = "ap-south-1"
     }
 
@@ -89,18 +89,16 @@ pipeline {
         stage('Deploy to EKS') {
             steps {
                 sh """
-                # Configure kubeconfig for EKS cluster (IAM role used automatically)
                 aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
 
-                # First-time deployment only
+                # Apply base manifest with placeholder
                 kubectl apply -f deployment.yaml || true
                 kubectl apply -f service.yaml || true
 
-                # Update deployment image dynamically for this build
+                # Update deployment to use this build's image tag
                 kubectl set image deployment/shopping-app \
-                shopping-app=$NEXUS_URL/$REPO_NAME/$IMAGE_NAME:v.$BUILD_NUMBER
+                  shopping-app=$NEXUS_URL/$REPO_NAME/$IMAGE_NAME:v.$BUILD_NUMBER
 
-                # Wait until deployment is rolled out
                 kubectl rollout status deployment/shopping-app
                 """
             }
@@ -109,12 +107,12 @@ pipeline {
 
     post {
         success {
-            echo "Build, Docker push, and EKS deployment completed successfully!"
-            cleanWs()  // Clean workspace after success
+            echo "Build and deploy succeeded!"
+            cleanWs()
         }
         failure {
             echo "Pipeline failed!"
-            cleanWs()  // Clean workspace after failure
+            cleanWs()
         }
     }
 }
