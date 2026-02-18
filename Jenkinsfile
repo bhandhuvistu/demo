@@ -93,8 +93,8 @@ pipeline {
                 aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
 
                 # First-time deployment only
-                kubectl apply -f k8s/deployment.yaml || true
-                kubectl apply -f k8s/service.yaml || true
+                kubectl apply -f deployment.yaml || true
+                kubectl apply -f service.yaml || true
 
                 # Update deployment image dynamically for this build
                 kubectl set image deployment/shopping-app \
