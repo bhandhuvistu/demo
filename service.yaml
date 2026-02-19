@@ -3,10 +3,11 @@ kind: Service
 metadata:
   name: shopping-service
 spec:
-  type: LoadBalancer
+  type: NodePort
   selector:
     app: shopping-app
   ports:
-    - name: http
-      port: 80        # External port
-      targetPort: 8282   # Container port inside pod
+    - protocol: TCP
+      port: 80           # cluster-internal service port
+      targetPort: 8282   # maps to containerPort in Deployment
+      nodePort: 30036    # external access port on node
