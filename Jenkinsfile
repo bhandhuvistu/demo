@@ -2,9 +2,8 @@ pipeline {
     agent any
 
     environment {
-        // Use the Docker registry port you configured in Nexus (HTTP/HTTPS). 
-        // Make sure the port matches your Docker hosted repo.
-        REGISTRY = "43.204.37.180:8082"  // Changed from 8443 to 8082 if you use HTTP
+        // Nexus Docker registry (HTTP port 8082)
+        REGISTRY = "13.233.225.225:8082"
         IMAGE_NAME = "shopping"
         FULL_IMAGE = "${REGISTRY}/${IMAGE_NAME}:v.${BUILD_NUMBER}"
         SONAR_PROJECT_KEY = "shopping-app"
@@ -30,7 +29,8 @@ pipeline {
 
         stage('Maven Build') {
             steps {
-                sh 'mvn clean install -DskipTests'  // Skip tests here; they run in the Test stage
+                // Skip tests here, they run in the next stage
+                sh 'mvn clean install -DskipTests'
             }
         }
 
@@ -42,7 +42,6 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                // Make sure 'SonarQube' server is configured in Jenkins → Manage Jenkins → Configure System
                 withSonarQubeEnv('SonarQube') {
                     withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                         sh """
@@ -71,11 +70,11 @@ pipeline {
         stage('Login to Nexus') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'nexus-docker',  // Jenkins credential with Nexus username/password
+                    credentialsId: 'nexus-docker',  // Jenkins credentials for Nexus
                     usernameVariable: 'USERNAME', 
                     passwordVariable: 'PASSWORD'
                 )]) {
-                    // Login using standard Docker CLI; --password-stdin is secure
+                    // Secure Docker login
                     sh "echo \$PASSWORD | docker login ${REGISTRY} -u \$USERNAME --password-stdin"
                 }
             }
@@ -90,10 +89,10 @@ pipeline {
         stage('Deploy to EKS') {
             steps {
                 sh """
-                # Update kubeconfig for the cluster
+                # Configure kubectl for EKS
                 aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
 
-                # Apply manifests (ignore errors if already exists)
+                # Apply base manifests (ignore errors if already exists)
                 kubectl apply -f deployment.yaml || true
                 kubectl apply -f service.yaml || true
 
