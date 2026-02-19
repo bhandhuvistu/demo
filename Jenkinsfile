@@ -96,13 +96,9 @@ pipeline {
                 kubectl apply -f deployment.yaml || true
                 kubectl apply -f service.yaml || true
 
-                # Update deployment with new image
-                #kubectl set image deployment/shopping-app \
-                  #shopping-app=${FULL_IMAGE}
-
+             """
             }
         }
-    }
 
     post {
         success {
@@ -113,5 +109,6 @@ pipeline {
             echo "Pipeline failed!"
             cleanWs()
         }
+    }
     }
 }
