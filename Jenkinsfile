@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        NEXUS_URL = "43.204.37.180:8082"
+        REGISTRY = "43.204.37.180:8443"        // Nexus Docker registry URL + HTTPS port
         IMAGE_NAME = "shopping"
-        REPO_NAME = "docker-hosted"
+        FULL_IMAGE = "${REGISTRY}/${IMAGE_NAME}:v.${BUILD_NUMBER}"
         SONAR_PROJECT_KEY = "shopping-app"
         SONAR_PROJECT_NAME = "ShoppingApp"
         EKS_CLUSTER_NAME = "eks-cluster"
@@ -44,9 +44,9 @@ pipeline {
                     withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                         sh """
                         mvn sonar:sonar \
-                            -Dsonar.projectKey=$SONAR_PROJECT_KEY \
-                            -Dsonar.projectName=$SONAR_PROJECT_NAME \
-                            -Dsonar.login=$SONAR_TOKEN
+                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                            -Dsonar.projectName=${SONAR_PROJECT_NAME} \
+                            -Dsonar.login=${SONAR_TOKEN}
                         """
                     }
                 }
@@ -55,16 +55,13 @@ pipeline {
 
         stage('Docker Image Build') {
             steps {
-                sh "docker build -t $IMAGE_NAME:v.$BUILD_NUMBER ."
+                sh "docker build -t ${IMAGE_NAME}:v.${BUILD_NUMBER} ."
             }
         }
 
         stage('Tag Image for Nexus') {
             steps {
-                sh """
-                docker tag $IMAGE_NAME:v.$BUILD_NUMBER \
-                $NEXUS_URL/$REPO_NAME/$IMAGE_NAME:v.$BUILD_NUMBER
-                """
+                sh "docker tag ${IMAGE_NAME}:v.${BUILD_NUMBER} ${FULL_IMAGE}"
             }
         }
 
@@ -75,30 +72,31 @@ pipeline {
                     usernameVariable: 'USERNAME', 
                     passwordVariable: 'PASSWORD'
                 )]) {
-                    sh "echo $PASSWORD | docker login $NEXUS_URL -u $USERNAME --password-stdin"
+                    sh "echo \$PASSWORD | docker login ${REGISTRY} -u \$USERNAME --password-stdin"
                 }
             }
         }
 
         stage('Push Image to Nexus') {
             steps {
-                sh "docker push $NEXUS_URL/$REPO_NAME/$IMAGE_NAME:v.$BUILD_NUMBER"
+                sh "docker push ${FULL_IMAGE}"
             }
         }
 
         stage('Deploy to EKS') {
             steps {
                 sh """
-                aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
+                aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
 
-                # Apply base manifest with placeholder
+                # Apply base manifest
                 kubectl apply -f deployment.yaml || true
                 kubectl apply -f service.yaml || true
 
-                # Update deployment to use this build's image tag
+                # Update deployment to use new image tag
                 kubectl set image deployment/shopping-app \
-                  shopping-app=$NEXUS_URL/$REPO_NAME/$IMAGE_NAME:v.$BUILD_NUMBER
+                  shopping-app=${FULL_IMAGE}
 
+                # Wait for rollout
                 kubectl rollout status deployment/shopping-app
                 """
             }
@@ -107,7 +105,7 @@ pipeline {
 
     post {
         success {
-            echo "Build and deploy succeeded!"
+            echo "Build, push, and deployment succeeded!"
             cleanWs()
         }
         failure {
