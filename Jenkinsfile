@@ -100,9 +100,6 @@ pipeline {
                 #kubectl set image deployment/shopping-app \
                   #shopping-app=${FULL_IMAGE}
 
-                # Wait for rollout to finish
-                kubectl rollout status deployment/shopping-app
-                """
             }
         }
     }
