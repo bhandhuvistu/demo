@@ -18,7 +18,7 @@ spec:
       - name: nexus-pull-secret
       containers:
       - name: shopping-app
-        image: 43.204.37.180:8443/shopping:v.27
+        image:  43.204.37.180:8082/docker-hosted/tags/shopping:PLACEHOLDER_TAG
         ports:
         - containerPort: 8282
         readinessProbe:
