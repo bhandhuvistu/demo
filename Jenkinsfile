@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        REGISTRY = "43.204.37.180:8443"        // Nexus Docker registry URL + HTTPS port
+        REGISTRY = "43.204.37.180:8081"        // Nexus Docker registry URL + HTTPS port
         IMAGE_NAME = "shopping"
         FULL_IMAGE = "${REGISTRY}/${IMAGE_NAME}:v.${BUILD_NUMBER}"
         SONAR_PROJECT_KEY = "shopping-app"
