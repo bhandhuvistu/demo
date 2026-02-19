@@ -97,8 +97,8 @@ pipeline {
                 kubectl apply -f service.yaml || true
 
                 # Update deployment with new image
-                kubectl set image deployment/shopping-app \
-                  shopping-app=${FULL_IMAGE}
+                #kubectl set image deployment/shopping-app \
+                  #shopping-app=${FULL_IMAGE}
 
                 # Wait for rollout to finish
                 kubectl rollout status deployment/shopping-app
