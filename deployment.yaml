@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: shopping-app
-        image: 13.233.225.225:8082/shopping:v.46
+        image: shopping:v.46
         imagePullPolicy: Always
         ports:
         - containerPort: 8282   # container port your app exposes
