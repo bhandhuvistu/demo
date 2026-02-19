@@ -14,29 +14,9 @@ spec:
       labels:
         app: shopping-app
     spec:
-      imagePullSecrets:
-      - name: nexus-pull-secret
       containers:
       - name: shopping-app
-        image:  13.233.225.225:8082/shopping 
+        image: 13.233.225.225:8082/shopping:v.46
+        imagePullPolicy: Always
         ports:
-        - containerPort: 8282
-        readinessProbe:
-          httpGet:
-            path: /actuator/health
-            port: 8282
-          initialDelaySeconds: 10
-          periodSeconds: 5
-        livenessProbe:
-          httpGet:
-            path: /actuator/health
-            port: 8282
-          initialDelaySeconds: 15
-          periodSeconds: 10
-        resources:
-          requests:
-            memory: "512Mi"
-            cpu: "250m"
-          limits:
-            memory: "1Gi"
-            cpu: "500m"
+        - containerPort: 8282   # container port your app exposes
